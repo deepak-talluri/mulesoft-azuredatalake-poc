@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:azure-data-lake-storage="http://www.mulesoft.org/schema/mule/azure-data-lake-storage" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/azure-data-lake-storage http://www.mulesoft.org/schema/mule/azure-data-lake-storage/current/mule-azure-data-lake-storage.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="91ad97f6-8a7b-4dfd-80f7-698bea1fb8b7" >
+		<http:listener-connection host="localhost" port="8050" />
+	</http:listener-config>
+	
+	<azure-data-lake-storage:config name="Azure_Data_Lake_Storage_Connector_Config" doc:name="Azure Data Lake Storage Connector Config" doc:id="a1faeefe-12e6-416a-9d3d-6ae442bf151a" >
+		<azure-data-lake-storage:shared-access-signature-connection accountName="test-account" dnsSuffix="dfs.core.windows.net" sasToken="samplesastoken"/>
+	</azure-data-lake-storage:config>
+	
+	<flow name="azuredatalake-poc-createFileSystem" doc:id="210d4e8b-38df-4d19-be2f-42e5ad6d1090" >
+		<http:listener doc:name="Request to create a file system" doc:id="13e4de35-57c5-408c-bc8c-7867ec2648a4" config-ref="HTTP_Listener_config" path="/createFileSystem" allowedMethods="GET"/>
+		<set-variable value="#[attributes.headers.'fileSystem']" doc:name="Set FS to create" doc:id="5032c018-aaeb-4300-8967-feb5433585ca" variableName="fileSystem"/>
+		<logger level="INFO" doc:name="Request received" doc:id="a0aed77a-b791-49ba-8ead-a69f406c0317" message="Request received to create a file system (Container) || File System (Container Name) : #[vars.fileSystem] || correlationId : #[correlationId]"/>
+		<azure-data-lake-storage:create-file-system doc:name="Create File System" doc:id="270732d9-6cbf-447a-bcf1-6c5665de1061" config-ref="Azure_Data_Lake_Storage_Connector_Config" filesystem="#[vars.fileSystem]" timeout="60"/>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="be2632b2-e2d6-4c18-8c01-efd265ccfac1" message="Response from Data Lake after creation of File System || Payload : #[payload] || File System (Container Name) : #[vars.fileSystem] || correlationId : #[correlationId]"/>
+	</flow>
+	
+	<flow name="azuredatalake-poc-deleteFileSystem" doc:id="5e421bc1-59f3-45e4-96d9-142ebd2305d5" >
+		<http:listener doc:name="Request to delete a file system" doc:id="5ac94080-c804-4a87-b7d6-cb3b1bd21041" config-ref="HTTP_Listener_config" path="/deleteFileSystem" allowedMethods="GET"/>
+		<set-variable value="#[attributes.headers.'fileSystem']" doc:name="Set FS to delete" doc:id="707012cc-c6b6-45c5-97e4-e928ea1a9064" variableName="fileSystem" />
+		<logger level="INFO" doc:name="Request received" doc:id="190b5b31-fb3a-4be1-8e00-e273ae7b9d40" message="Request received to delete a file system (Container) || File System (Container Name) : #[vars.fileSystem] || correlationId : #[correlationId]" />
+		<azure-data-lake-storage:delete-file-system doc:name="Delete File System" doc:id="3657bee3-604d-48c7-a9a5-558e17761b7f" config-ref="Azure_Data_Lake_Storage_Connector_Config" filesystem="#[vars.fileSystem]" timeout="60"/>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="d6dfd53c-91d6-44bd-8de5-f3990de3e723" message="Response from Data Lake after deletion of File System || Payload : #[payload] || File System (Container Name) : #[vars.fileSystem] || correlationId : #[correlationId]" />
+	</flow>
+	
+	<flow name="azuredatalake-pocFlow-createPath-DirectoryorFile" doc:id="b0fd1fe1-0bb1-4dd0-ad87-6f154b633596" >
+		<http:listener doc:name="Listener" doc:id="ededd18c-5d59-4fb1-809f-a34187cf4ac3" config-ref="HTTP_Listener_config" path="/createPath/directory" allowedMethods="POST"/>
+		<set-variable value="#[attributes.headers.'fileSystem']" doc:name="Set File System" doc:id="9b96b964-ccd9-4979-9970-7224d3a5695e" variableName="fileSystem" />
+		<set-variable value="#[attributes.headers.'path']" doc:name="Set Path" doc:id="d4ed6634-7d47-46e2-9f33-70bb7afe6d1d" variableName="path"/>
+		<logger level="INFO" doc:name="Request received" doc:id="6d572a5d-f83b-41a5-94ef-4ec55e29c588" message="Request received to create a path (Directory) || File System (Container Name) : #[vars.fileSystem] || Path (Directory) : #[vars.path] || correlationId : #[correlationId]"/>
+		<azure-data-lake-storage:create-or-rename doc:name="Create/Rename Path" doc:id="515f1f1e-4cc4-4287-bcdc-6c2ea2986894" config-ref="Azure_Data_Lake_Storage_Connector_Config" resource="directory" fileSystem="#[vars.fileSystem]" path="#[vars.path]" timeout="60"/>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="acd947da-acd3-4829-a3ce-4db8b20475db" message="Response from Data Lake after creation of Path (Directory) : #[payload] || File System (Container Name) : #[vars.fileSystem] || Path (Directory) : #[vars.path] || correlationId : #[correlationId]" />
+	</flow>
+	
+	<flow name="azuredatalake-pocFlow-readPath-File" doc:id="484e854c-0201-4409-8307-d644795fdfd8" >
+		<http:listener doc:name="Listener" doc:id="e525dddb-dcea-455f-9fad-7fbcf1be3ac5" config-ref="HTTP_Listener_config" path="/readPath/file" allowedMethods="GET"/>
+		<set-variable value="#[attributes.headers.'fileSystem']" doc:name="Set File System" doc:id="ccbeb5e9-0575-4387-87dd-2d84379a5fae" variableName="fileSystem" />
+		<set-variable value="#[attributes.headers.'path']" doc:name="Set Path" doc:id="3e55d483-9ded-4910-b0eb-ab578526d52b" variableName="path" />
+		<logger level="INFO" doc:name="Request received" doc:id="872cad06-515e-4e0f-9253-c59f4495490a" message="Request received to read a path (File) || File System (Container Name) : #[vars.fileSystem] || Path (File) : #[vars.path] || correlationId : #[correlationId]" />
+		<azure-data-lake-storage:read-path doc:name="Read Path" doc:id="0ee05371-2464-4866-bc9e-56d4b608fbc4" config-ref="Azure_Data_Lake_Storage_Connector_Config" fileSystem="#[vars.fileSystem]" path="#[vars.path]" timeout="60"/>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="1c90cdce-4c64-4c53-91db-83de35572d60" message="Response from Data Lake after reading Path (File) : #[payload] || File System (Container Name) : #[vars.fileSystem] || Path (File) : #[vars.path] || correlationId : #[correlationId]"/>
+	</flow>
+	
+	<flow name="azuredatalake-pocFlow-List-FileSystems" doc:id="0c4ee588-2869-4738-838a-307e1b720c5c" >
+		<http:listener doc:name="Listener" doc:id="306665f5-63f7-4039-a5fc-af988625170e" config-ref="HTTP_Listener_config" path="/listFileSystems" allowedMethods="GET"/>
+		<azure-data-lake-storage:list-file-systems doc:name="List File Systems" doc:id="0cb20ce7-4c1c-457c-8295-5c415b118928" config-ref="Azure_Data_Lake_Storage_Connector_Config"/>
+		<ee:transform doc:name="Read Response" doc:id="6494003c-3e82-4f8b-9140-c0ad22b843fd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="de78e7d4-e7c3-4867-a748-0c40bf205ffa" message="Response from Data Lake listing File Systems : #[payload] || correlationId : #[correlationId]" />
+	</flow>
+	
+	<flow name="azuredatalake-pocFlow-List-Path" doc:id="cef60077-fc44-46c1-bccf-21a0eca63c56" >
+		<http:listener doc:name="Listener" doc:id="9d5d2f60-8c0e-49c4-bf01-e4200ed67547" config-ref="HTTP_Listener_config" path="/listPaths"/>
+		<set-variable value="#[attributes.headers.'fileSystem']" doc:name="Set File System" doc:id="9e0bfa80-cb62-4744-b5d5-02b034c61b64" variableName="fileSystem" />
+		<azure-data-lake-storage:list-paths doc:name="List Paths" doc:id="7c639b4d-1b43-4c5b-8d92-e6b0ba38e1c7" config-ref="Azure_Data_Lake_Storage_Connector_Config" filesystem="#[vars.fileSystem]"/>
+		<ee:transform doc:name="Read Response" doc:id="0c9a4668-4f11-4613-9844-05a0aecc09c4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Response from Data Lake" doc:id="5feca7d4-610e-4617-8c35-a5c3309bffce" message="Response from Data Lake listing File Systems : #[payload] || correlationId : #[correlationId]" />
+	</flow>
+
+</mule>
